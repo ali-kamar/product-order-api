@@ -1,4 +1,6 @@
 from django.db.models import Max, Min
+from django.utils.decorators import method_decorator
+from django.views.decorators.cache import cache_page
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.decorators import action
@@ -45,7 +47,20 @@ class ProductListCreateAPIView(generics.ListCreateAPIView):
     pagination_class.max_limit = 6  # Sets a maximum limit of 6 products per page
     #limit=10 → Give me 10 items.
     #offset=20 → Skip the first 20 items and then give me the next 10 that starts from 21 to 30.
-   
+
+    #this is a decorator that caches the response of the list method for 2 hours (60 * 60 * 2 seconds).
+    #This means that if the same request is made within 2 hours, the cached response will be returned instead of hitting the database again.
+    #we should override the list method to apply the cache decorator.
+    #key_prefix is used to create a unique cache key for the response, so that different responses can be cached separately.
+    @method_decorator(cache_page(60 * 60 * 2,  key_prefix='product_list'))
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
+    
+    def get_queryset(self):
+        import time
+        time.sleep(5)
+        return super().get_queryset()   
+
     def get_permissions(self):
         if self.request.method == 'POST':
             # If the request method is POST, only allow admin users to create products
