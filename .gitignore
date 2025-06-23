@@ -9,8 +9,8 @@ __pycache__/
 
 # Virtual environment
 venv/
-.env/
-.env.*  # For .env.dev, .env.prod, etc.
+/.env
+/.env.*  # For .env.dev, .env.prod, etc.
 
 # Local settings and secrets
 *.log
