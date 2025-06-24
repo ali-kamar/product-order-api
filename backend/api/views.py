@@ -1,4 +1,5 @@
 from django.db.models import Max, Min
+from django.views.decorators.vary import vary_on_headers, vary_on_cookie
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import cache_page
 from django.shortcuts import get_object_or_404
@@ -17,6 +18,7 @@ from api.serializers import (OrderSerializer, ProductInfoSerializer,
                              ProductSerializer, OrderCreateSerializer, UserSerializer)
 
 from .filters import InStockFilterBackend, ProductFilter, OrderFilter
+from rest_framework.throttling import ScopedRateThrottle
 
 # @api_view(['GET'])
 # def product_list(request):
@@ -26,6 +28,8 @@ from .filters import InStockFilterBackend, ProductFilter, OrderFilter
 
 # this is a class-based view that uses Generic Views to handles HTTP requests to list products, this is for get req
 class ProductListCreateAPIView(generics.ListCreateAPIView):
+    throttle_classes = [ScopedRateThrottle]  # Apply scoped rate throttling
+    throttle_scope = 'products'  # Define the scope for throttling, this is used to limit the number of requests to 2 per minute
     queryset = Product.objects.order_by('pk') # order by pk is important for pagination to work correctly and with no duplicates, it ensures that the products are ordered consistently.
     serializer_class = ProductSerializer
     filterset_class = ProductFilter  # Allows users to filter results based on specific fields 
@@ -52,7 +56,8 @@ class ProductListCreateAPIView(generics.ListCreateAPIView):
     #This means that if the same request is made within 2 hours, the cached response will be returned instead of hitting the database again.
     #we should override the list method to apply the cache decorator.
     #key_prefix is used to create a unique cache key for the response, so that different responses can be cached separately.
-    @method_decorator(cache_page(60 * 60 * 2,  key_prefix='product_list'))
+    @method_decorator(cache_page(60 * 60 * 2, key_prefix='product_list'), name='list')
+    @method_decorator(vary_on_cookie, name='list') 
     def list(self, request, *args, **kwargs):
         return super().list(request, *args, **kwargs)
     
@@ -143,12 +148,19 @@ class ProductRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView)
 #         return qs.filter(user=self.request.user)
 
 class OrderViewSet(viewsets.ModelViewSet):
+    throttle_classes = [ScopedRateThrottle]  # Apply scoped rate throttling
+    throttle_scope = 'orders'  # Define the scope for throttling, this is used to limit the number of requests to 4 per minute
     queryset = Order.objects.prefetch_related('items__product')
     serializer_class = OrderSerializer
     permission_classes = [IsAuthenticated]  # Ensure the user is authenticated
     filterset_class = OrderFilter
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     ordering_fields = ['created_at']
+    #this vary on headers decorator is used to cache the response based on the Authorization header.
+    #This means that if the same request is made with the same Authorization header, the cached response will be returned instead of hitting the database 
+    # again. and the problem is when sending request to cached response it will give the same orders for the first user
+    #so we distinguish the orders by the user who is authenticated.
+    # @method_decorator(vary_on_headers("Authorization"))
 
     def get_queryset(self):
         qs = super().get_queryset()
