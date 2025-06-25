@@ -37,6 +37,19 @@ services:
     volumes:
       - redis_data:/data
 
+  celery:
+    build: .
+    command: celery -A backend worker --loglevel=info
+    working_dir: /app
+    volumes:
+      - .:/app
+    depends_on:
+      - web
+      - django-redis
+      - db
+    env_file:
+      - .env
+
 volumes:
   postgres_data:
   redis_data:

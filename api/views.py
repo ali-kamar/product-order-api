@@ -19,6 +19,7 @@ from api.serializers import (OrderSerializer, ProductInfoSerializer,
 
 from .filters import InStockFilterBackend, ProductFilter, OrderFilter
 from rest_framework.throttling import ScopedRateThrottle
+from .tasks import send_order_confirmation_email
 
 # @api_view(['GET'])
 # def product_list(request):
@@ -187,7 +188,8 @@ class OrderViewSet(viewsets.ModelViewSet):
         return super().get_serializer_class()
     #here we override the perform_create method to automatically set the user field to the authenticated user when creating an order.
     def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+       order = serializer.save(user=self.request.user)
+       send_order_confirmation_email.delay(order.order_id, self.request.user.email)
 
     # @action(detail=False, methods=['get'], url_path='user-orders')
     # def user_orders(self, request):
