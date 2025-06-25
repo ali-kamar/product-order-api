@@ -64,7 +64,7 @@ class ProductListCreateAPIView(generics.ListCreateAPIView):
     
     def get_queryset(self):
         import time
-        time.sleep(5)
+        time.sleep(2)  # Simulate a delay for cache demonstration purposes
         return super().get_queryset()   
 
     def get_permissions(self):
@@ -151,6 +151,7 @@ class ProductRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView)
 class OrderViewSet(viewsets.ModelViewSet):
     throttle_classes = [ScopedRateThrottle]  # Apply scoped rate throttling
     throttle_scope = 'orders'  # Define the scope for throttling, this is used to limit the number of requests to 4 per minute
+    #optimize db queries by prefetching related objects, this is saying: “I want to fetch all Orders, and also fetch all related OrderItems and their Products, efficiently, in advance.”
     queryset = Order.objects.prefetch_related('items__product')
     serializer_class = OrderSerializer
     permission_classes = [IsAuthenticated]  # Ensure the user is authenticated

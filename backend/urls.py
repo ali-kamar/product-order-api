@@ -26,6 +26,7 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, Spec
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include('api.urls')),
+    #use silk for profiling and monitoring
     path('silk/', include('silk.urls', namespace='silk')),
     #JWT authentication URLs to obtain and refresh tokens and Authentication always runs at the very start of the view
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
